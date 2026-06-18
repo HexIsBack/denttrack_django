@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}New Appointment — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Schedule Appointment</h1></div>
+<div class="form-card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Patient *</label>
+            {{ form.patient }}
+            {{ form.patient.errors }}
+        </div>
+        <div class="form-group">
+            <label>Dentist *</label>
+            {{ form.dentist }}
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date *</label>
+                {{ form.appt_date }}
+                {{ form.appt_date.errors }}
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                {{ form.appt_time }}
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Purpose</label>
+            {{ form.purpose }}
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            {{ form.status }}
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            {{ form.notes }}
+        </div>
+        <button type="submit" class="btn btn-success">💾 Save Appointment</button>
+        <a href="{% url 'appointment_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DentTrack{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="app-shell">
+    <nav class="sidebar">
+        <div class="sidebar-brand">🦷 DentTrack</div>
+        <div class="sidebar-user">
+            👤 {{ user.first_name|default:user.username }}<br>
+            <span class="role-badge">[{{ user.profile.role|default:"staff"|upper }}]</span>
+        </div>
+        <hr class="sidebar-divider">
+        <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">🏠 Dashboard</a>
+        <a href="{% url 'patient_list' %}" class="nav-link {% if 'patient' in request.resolver_match.url_name %}active{% endif %}">👥 Patients</a>
+        <a href="{% url 'appointment_list' %}" class="nav-link {% if 'appointment' in request.resolver_match.url_name %}active{% endif %}">📅 Appointments</a>
+        {% if user.profile.role == 'admin' %}
+        <a href="{% url 'audit_log' %}" class="nav-link {% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">📋 Audit Log</a>
+        {% endif %}
+        <a href="{% url 'settings' %}" class="nav-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">⚙️ Settings</a>
+        <div class="sidebar-spacer"></div>
+        <form method="post" action="{% url 'logout' %}" class="logout-form">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-block">🚪 Logout</button>
+        </form>
+    </nav>
+
+    <main class="content">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% else %}
+    {% block content_unauth %}{% endblock %}
+{% endif %}
+</body>
+</html>

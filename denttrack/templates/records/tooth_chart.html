@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block title %}Tooth Chart — {{ patient }}{% endblock %}
+{% block content %}
+
+<div class="chart-toolbar">
+    <span>🦷 {{ patient }} &nbsp;|&nbsp; DOB: {{ patient.birthdate|default:"N/A" }} &nbsp;|&nbsp; Gender: {{ patient.gender|default:"N/A" }} &nbsp;|&nbsp; Phone: {{ patient.phone|default:"N/A" }}</span>
+    <a href="{% url 'patient_detail' patient.pk %}" class="btn btn-sm" style="background:#0288D1;">📋 View Full Record</a>
+</div>
+
+<div class="chart-layout chart-layout-3col">
+    <div class="palette-panel">
+        <h4>Procedures</h4>
+        <p class="muted" style="margin-top:-6px;">Drag onto a tooth surface</p>
+        <div class="palette-list">
+            {% for proc in procedure_palette %}
+            <div class="palette-item" draggable="true" data-code="{{ proc.code }}" data-whole="{{ proc.whole_tooth|yesno:'1,0' }}">
+                <span class="palette-icon" style="background:{{ proc.color }};">{{ proc.icon }}</span>
+                <span class="palette-label">{{ proc.label }}</span>
+                {% if proc.whole_tooth %}<span class="palette-tag">whole tooth</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="muted palette-hint">Whole-tooth procedures (crown, extraction, implant, bridge, root canal) apply to all 5 surfaces at once. Everything else drops onto a single surface.</p>
+    </div>
+
+    <div class="chart-main">
+        <h3 style="margin-top:0;">Dental Chart <span class="muted">(drag a procedure onto a tooth, or click a tooth for details)</span></h3>
+        <div class="chart-canvas-wrap">
+            <svg id="tooth-svg" viewBox="0 0 {{ svg_width }} {{ svg_height }}" width="100%" style="max-width: 980px; display:block; margin:0 auto;">
+                <text x="-10" y="{{ upper_label_y }}" font-size="11" font-weight="bold" fill="#546E7A" text-anchor="end">UPPER JAW</text>
+                <text x="-10" y="{{ lower_label_y }}" font-size="11" font-weight="bold" fill="#546E7A" text-anchor="end">LOWER JAW</text>
+
+                <line x1="{{ mid_x }}" y1="0" x2="{{ mid_x }}" y2="{{ svg_height }}" stroke="#B0BEC5" stroke-width="1" stroke-dasharray="4,3"/>
+
+                {% for tooth in teeth %}
+                <g class="tooth-group" data-tooth="{{ tooth.number }}" data-arch="{{ tooth.arch }}"
+                   transform="translate({{ tooth.x }},{{ tooth.y }})">
+
+                    <clipPath id="clip-{{ tooth.number }}">
+                        <path d="{{ tooth.outline }}" />
+                    </clipPath>
+
+                    {% if tooth.condition == "Extracted" or tooth.condition == "Missing (Congenital)" %}
+                        {# Missing/extracted teeth render as a faded outline with an X, no surface bands #}
+                        <path class="tooth-outline tooth-missing" d="{{ tooth.outline }}" />
+                        <line x1="4" y1="{{ tooth.box_h|add:-4 }}" x2="{{ tooth.box_w|add:-4 }}" y2="4" stroke="#C62828" stroke-width="2.5" />
+                        <line x1="4" y1="4" x2="{{ tooth.box_w|add:-4 }}" y2="{{ tooth.box_h|add:-4 }}" stroke="#C62828" stroke-width="2.5" />
+                    {% else %}
+                        <path class="tooth-root" d="{{ tooth.root }}" />
+
+                        <g clip-path="url(#clip-{{ tooth.number }})">
+                            {% for s in tooth.surfaces_ordered %}
+                            <path class="surface-zone" data-surface="{{ s.key }}"
+                                  d="{{ s.path }}"
+                                  fill="{{ s.color }}"
+                                  fill-opacity="{% if s.code == 'clear' %}0.18{% else %}0.85{% endif %}" />
+                            {% endfor %}
+                            {% for s in tooth.surfaces_ordered %}
+                            <text class="surface-icon" data-surface="{{ s.key }}"
+                                  x="{{ s.icon_x }}" y="{{ s.icon_y }}"
+                                  font-size="7" font-weight="bold" text-anchor="middle"
+                                  dominant-baseline="middle" fill="#fff" stroke="#00000055" stroke-width="0.4"
+                                  style="pointer-events:none;">{{ s.icon }}</text>
+                            {% endfor %}
+                            {# Faint divider lines so the 5 zones read as distinct even when all are healthy #}
+                            <line x1="{{ tooth.third_x1 }}" y1="{{ tooth.crown_top }}" x2="{{ tooth.third_x1 }}" y2="{{ tooth.crown_bot }}" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7" style="pointer-events:none;"/>
+                            <line x1="{{ tooth.third_x2 }}" y1="{{ tooth.crown_top }}" x2="{{ tooth.third_x2 }}" y2="{{ tooth.crown_bot }}" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7" style="pointer-events:none;"/>
+                            <rect x="{{ tooth.rim }}" y="{{ tooth.crown_top|add:tooth.rim }}" width="{{ tooth.lingual_w }}" height="{{ tooth.lingual_h }}" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7" style="pointer-events:none;"/>
+                        </g>
+
+                        <path class="tooth-outline" d="{{ tooth.outline }}" />
+                    {% endif %}
+
+                    <text class="tooth-number-label" x="{{ tooth.half_box_w }}" y="-6"
+                          text-anchor="middle">{{ tooth.number }}</text>
+                </g>
+                {% endfor %}
+            </svg>
+        </div>
+
+        <div class="legend">
+            {% for proc in procedure_palette %}
+            <div class="legend-item">
+                <span class="legend-dot" style="background:{{ proc.color }};"></span>{{ proc.label }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="detail-panel" id="detail-panel">
+        <div class="detail-empty">👆 Click a tooth to view or edit its record.<br><br>🖱️ Drag a procedure from the left palette onto a tooth surface to chart it.</div>
+    </div>
+</div>
+
+<script>
+let selectedTooth = null;
+
+function loadTooth(toothNumber) {
+    selectedTooth = toothNumber;
+    document.querySelectorAll('.tooth-group').forEach(g => g.classList.remove('selected'));
+    document.querySelector(`.tooth-group[data-tooth="${toothNumber}"]`).classList.add('selected');
+
+    fetch(`/patients/{{ patient.pk }}/chart/tooth/${toothNumber}/`, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(r => r.text())
+    .then(html => {
+        document.getElementById('detail-panel').innerHTML = html;
+    });
+}
+
+document.addEventListener('submit', function(e) {
+    if (e.target && e.target.id === 'tooth-form') {
+        e.preventDefault();
+        const form = e.target;
+        const data = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            body: data,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.text())
+        .then(html => {
+            document.getElementById('detail-panel').innerHTML = html;
+            setTimeout(() => location.reload(), 400);
+        });
+    }
+});
+
+// ── Click-to-select (tooth body, not a specific surface) ─────────────────
+document.querySelectorAll('.tooth-group').forEach(g => {
+    g.addEventListener('click', (e) => {
+        // Only treat as "select tooth" click if it wasn't part of a drag-drop
+        if (g.dataset.justDropped === '1') { g.dataset.justDropped = '0'; return; }
+        loadTooth(g.dataset.tooth);
+    });
+});
+
+// ── Drag-and-drop: palette items → tooth surfaces ─────────────────────────
+const CSRF_TOKEN = '{{ csrf_token }}';
+
+document.querySelectorAll('.palette-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/code', item.dataset.code);
+        e.dataTransfer.setData('text/whole', item.dataset.whole);
+        item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+});
+
+function applyProcedure(toothNumber, surfaceKey, code, wholeTooth) {
+    return fetch(`/patients/{{ patient.pk }}/chart/tooth/${toothNumber}/apply/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({
+            procedure_code: code,
+            surface: surfaceKey,
+            whole_tooth: wholeTooth === '1',
+        }),
+    }).then(r => r.json());
+}
+
+function repaintTooth(toothGroup, result) {
+    if (!result.ok) return;
+    const opacity = result.icon === '' ? '0.18' : '0.85';
+    if (result.whole_tooth) {
+        toothGroup.querySelectorAll('.surface-zone').forEach(rect => {
+            rect.setAttribute('fill', result.color);
+            rect.setAttribute('fill-opacity', opacity);
+        });
+        toothGroup.querySelectorAll('.surface-icon').forEach(t => t.textContent = result.icon);
+    } else {
+        const surface = result.surfaces[0];
+        const rect = toothGroup.querySelector(`.surface-zone[data-surface="${surface}"]`);
+        const icon = toothGroup.querySelector(`.surface-icon[data-surface="${surface}"]`);
+        if (rect) {
+            rect.setAttribute('fill', result.color);
+            rect.setAttribute('fill-opacity', opacity);
+        }
+        if (icon) icon.textContent = result.icon;
+    }
+}
+
+document.querySelectorAll('.tooth-group').forEach(g => {
+    const condition = g.querySelector('.tooth-missing');
+    if (condition) return; // skip drop handling on extracted/missing teeth
+
+    g.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        g.classList.add('drop-hover');
+    });
+    g.addEventListener('dragleave', () => g.classList.remove('drop-hover'));
+    g.addEventListener('drop', (e) => {
+        e.preventDefault();
+        g.classList.remove('drop-hover');
+        g.dataset.justDropped = '1';
+
+        const code = e.dataTransfer.getData('text/code');
+        const wholeTooth = e.dataTransfer.getData('text/whole');
+        const toothNumber = g.dataset.tooth;
+
+        let surfaceKey = null;
+        if (wholeTooth !== '1') {
+            const target = e.target.closest('.surface-zone');
+            surfaceKey = target ? target.dataset.surface : 'occlusal';
+        }
+
+        applyProcedure(toothNumber, surfaceKey, code, wholeTooth).then(result => {
+            repaintTooth(g, result);
+            if (selectedTooth == toothNumber) loadTooth(toothNumber);
+        });
+    });
+});
+</script>
+{% endblock %}

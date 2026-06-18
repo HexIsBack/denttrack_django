@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="page-subtitle">Welcome back, {{ user.first_name|default:user.username }} — {% now "l, F j, Y" %}</p>
+    </div>
+</div>
+
+<div class="stat-cards">
+    <div class="stat-card card-1">
+        <div class="icon">👥</div>
+        <div class="value">{{ patient_count }}</div>
+        <div class="label">Total Patients</div>
+    </div>
+    <div class="stat-card card-2">
+        <div class="icon">🦷</div>
+        <div class="value">{{ tooth_record_count }}</div>
+        <div class="label">Tooth Records</div>
+    </div>
+    <div class="stat-card card-3">
+        <div class="icon">📅</div>
+        <div class="value">{{ upcoming_count }}</div>
+        <div class="label">Appointments</div>
+    </div>
+    <div class="stat-card card-4">
+        <div class="icon">👨‍⚕️</div>
+        <div class="value">{{ staff_count }}</div>
+        <div class="label">Active Staff</div>
+    </div>
+</div>
+
+<div class="section-title">Recent Patients</div>
+<table class="data-table">
+    <thead>
+        <tr><th>Name</th><th>Phone</th><th>Gender</th><th>Registered</th></tr>
+    </thead>
+    <tbody>
+        {% for p in recent_patients %}
+        <tr onclick="window.location='{% url 'patient_detail' p.pk %}'" style="cursor:pointer;">
+            <td>{{ p.first_name }} {{ p.last_name }}</td>
+            <td>{{ p.phone|default:"—" }}</td>
+            <td>{{ p.gender|default:"—" }}</td>
+            <td>{{ p.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No patients yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="actions-row">
+    <a href="{% url 'patient_create' %}" class="btn btn-success">➕ New Patient</a>
+</div>
+{% endblock %}

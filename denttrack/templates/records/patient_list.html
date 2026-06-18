@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Patients — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Patients</h1>
+    <a href="{% url 'patient_create' %}" class="btn btn-success">➕ Add Patient</a>
+</div>
+
+<form method="get" class="search-row">
+    <label>🔍</label>
+    {{ form.q }}
+    <button type="submit" class="btn btn-sm">Search</button>
+    {% if q %}<a href="{% url 'patient_list' %}" class="btn btn-secondary btn-sm">Clear</a>{% endif %}
+</form>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Name</th><th>Birthdate</th><th>Gender</th><th>Phone</th><th>Email</th><th>Registered</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in patients %}
+        <tr>
+            <td><a href="{% url 'patient_detail' p.pk %}">{{ p.first_name }} {{ p.last_name }}</a></td>
+            <td>{{ p.birthdate|default:"—" }}</td>
+            <td>{{ p.gender|default:"—" }}</td>
+            <td>{{ p.phone|default:"—" }}</td>
+            <td>{{ p.email|default:"—" }}</td>
+            <td>{{ p.created_at|date:"Y-m-d" }}</td>
+            <td>
+                <a href="{% url 'tooth_chart' p.pk %}" class="btn btn-sm">🦷 Chart</a>
+                <a href="{% url 'patient_edit' p.pk %}" class="btn btn-sm btn-secondary">✏️ Edit</a>
+                <a href="{% url 'patient_delete' p.pk %}" class="btn btn-sm btn-danger">🗑 Delete</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="muted">No patients found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

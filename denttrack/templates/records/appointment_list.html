@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Appointments — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Appointments</h1>
+    <a href="{% url 'appointment_create' %}" class="btn btn-success">➕ New Appointment</a>
+</div>
+<table class="data-table">
+    <thead><tr><th>Patient</th><th>Date</th><th>Time</th><th>Purpose</th><th>Dentist</th><th>Status</th></tr></thead>
+    <tbody>
+        {% for a in appointments %}
+        <tr>
+            <td><a href="{% url 'patient_detail' a.patient.pk %}">{{ a.patient }}</a></td>
+            <td>{{ a.appt_date }}</td>
+            <td>{{ a.appt_time|default:"—" }}</td>
+            <td>{{ a.purpose|default:"—" }}</td>
+            <td>{{ a.dentist.first_name|default:a.dentist.username }}</td>
+            <td>{{ a.status }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="muted">No appointments scheduled yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

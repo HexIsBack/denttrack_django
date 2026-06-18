@@ -1,0 +1,37 @@
+<h3>Tooth #{{ tooth_number }}<br><small style="font-weight:400;font-size:13px;color:#546E7A;">{{ tooth_name }}</small></h3>
+
+{% if just_saved %}
+<div class="alert alert-success" style="padding:8px 12px; font-size:13px;">✅ Saved successfully!</div>
+{% endif %}
+
+<form id="tooth-form" method="post" action="{% url 'tooth_detail' patient.pk tooth_number %}">
+    {% csrf_token %}
+    <div class="form-group">
+        <label>Condition</label>
+        {{ form.condition }}
+    </div>
+    <div class="form-group">
+        <label>Treatment Done</label>
+        {{ form.treatment }}
+    </div>
+    <div class="form-group">
+        <label>Notes</label>
+        {{ form.notes }}
+    </div>
+    {% if tooth_record.recorded_at %}
+    <p class="muted">Last updated: {{ tooth_record.recorded_at|date:"Y-m-d H:i" }}{% if tooth_record.recorded_by %} by {{ tooth_record.recorded_by.first_name|default:tooth_record.recorded_by.username }}{% endif %}</p>
+    {% endif %}
+    <button type="submit" class="btn btn-success btn-block">💾 Save Tooth Record</button>
+</form>
+
+<div class="surface-breakdown">
+    <h4>Surface Chart</h4>
+    {% for row in surface_rows %}
+    <div class="surface-row">
+        <span class="surface-dot" style="background:{{ row.color }};"></span>
+        <span class="surface-name">{{ row.label }}</span>
+        <span class="surface-proc">{{ row.procedure_label }}</span>
+    </div>
+    {% endfor %}
+    <p class="muted" style="margin-top:10px;">Drag a procedure from the palette onto this tooth in the chart to update a surface.</p>
+</div>

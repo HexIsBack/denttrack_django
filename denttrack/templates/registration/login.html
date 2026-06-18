@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Login — DentTrack{% endblock %}
+{% block content_unauth %}
+<div class="login-page">
+    <div class="login-logo">
+        <div class="emoji">🦷</div>
+        <h1>DentTrack</h1>
+        <p>Dental Patient Record System</p>
+    </div>
+    <div class="login-card">
+        <h2>Sign in to your account</h2>
+        {% if form.errors %}
+            <div class="alert alert-error">Invalid username or password.</div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" class="form-control" autofocus required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-block">Sign In</button>
+        </form>
+        <p class="login-hint">Default: admin / admin123</p>
+    </div>
+</div>
+{% endblock %}

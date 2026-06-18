@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ patient }} — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ patient }}</h1>
+    <a href="{% url 'tooth_chart' patient.pk %}" class="btn">🦷 Open Tooth Chart</a>
+</div>
+
+<div class="tabs">
+    <a href="#info" class="tab-link active" onclick="showTab(event,'info')">Personal Info</a>
+    <a href="#teeth" class="tab-link" onclick="showTab(event,'teeth')">Tooth Summary</a>
+    <a href="#appts" class="tab-link" onclick="showTab(event,'appts')">Appointments</a>
+</div>
+
+<div id="info" class="tab-pane">
+    <table class="data-table">
+        <tr><th style="width:200px;">Full Name</th><td>{{ patient }}</td></tr>
+        <tr><th>Date of Birth</th><td>{{ patient.birthdate|default:"N/A" }}</td></tr>
+        <tr><th>Gender</th><td>{{ patient.gender|default:"N/A" }}</td></tr>
+        <tr><th>Phone</th><td>{{ patient.phone|default:"N/A" }}</td></tr>
+        <tr><th>Email</th><td>{{ patient.email|default:"N/A" }}</td></tr>
+        <tr><th>Address</th><td>{{ patient.address|default:"N/A" }}</td></tr>
+        <tr><th>Medical History</th><td>{{ patient.medical_history|default:"None"|linebreaksbr }}</td></tr>
+        <tr><th>Allergies</th><td>{{ patient.allergies|default:"None"|linebreaksbr }}</td></tr>
+        <tr><th>Registered</th><td>{{ patient.created_at|date:"Y-m-d H:i" }}</td></tr>
+    </table>
+    <div class="actions-row">
+        <a href="{% url 'patient_edit' patient.pk %}" class="btn btn-secondary">✏️ Edit Patient</a>
+    </div>
+</div>
+
+<div id="teeth" class="tab-pane" style="display:none;">
+    <table class="data-table">
+        <thead><tr><th>Tooth #</th><th>Name</th><th>Condition</th><th>Treatment</th><th>Last Updated</th></tr></thead>
+        <tbody>
+            {% for rec in tooth_records %}
+            <tr>
+                <td>{{ rec.tooth_number }}</td>
+                <td>{{ rec.tooth_name }}</td>
+                <td><span class="legend-dot" style="background:{{ rec.color }};"></span> {{ rec.condition }}</td>
+                <td>{{ rec.treatment|default:"—" }}</td>
+                <td>{{ rec.recorded_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="muted">No tooth records yet. Open the tooth chart to begin.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="appts" class="tab-pane" style="display:none;">
+    <table class="data-table">
+        <thead><tr><th>Date</th><th>Time</th><th>Purpose</th><th>Dentist</th><th>Status</th></tr></thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>{{ a.appt_date }}</td>
+                <td>{{ a.appt_time|default:"—" }}</td>
+                <td>{{ a.purpose|default:"—" }}</td>
+                <td>{{ a.dentist.first_name|default:a.dentist.username }}</td>
+                <td>{{ a.status }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="muted">No appointments yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="actions-row">
+        <a href="{% url 'appointment_create' %}?patient={{ patient.pk }}" class="btn btn-success">➕ New Appointment</a>
+    </div>
+</div>
+
+<script>
+function showTab(e, id) {
+    e.preventDefault();
+    document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-link').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).style.display = 'block';
+    e.target.classList.add('active');
+}
+</script>
+{% endblock %}

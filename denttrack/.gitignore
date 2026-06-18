@@ -1,0 +1,27 @@
+# Virtual environment
+venv/
+env/
+*.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Django
+*.log
+staticfiles/
+
+# Database — contains real patient data, never commit this
+db.sqlite3
+dental_records.db
+
+# Environment / secrets
+.env
+
+# Editor/OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

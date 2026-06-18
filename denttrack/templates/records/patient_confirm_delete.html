@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Delete Patient — DentTrack{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Delete Patient</h1></div>
+<div class="form-card">
+    <p>Are you sure you want to delete <strong>{{ patient }}</strong> and ALL their records (tooth chart, appointments)?</p>
+    <p class="muted">This action cannot be undone.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">🗑 Yes, Delete Permanently</button>
+        <a href="{% url 'patient_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
