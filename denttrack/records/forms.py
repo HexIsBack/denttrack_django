@@ -97,6 +97,18 @@ class StaffCreateForm(forms.Form):
         return username
 
 
+class StaffEditForm(forms.Form):
+    full_name = forms.CharField(max_length=150, label="Full Name")
+    role = forms.ChoiceField(choices=StaffProfile.ROLE_CHOICES)
+    is_active = forms.BooleanField(required=False, label="Account active")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "form-control")
+        self.fields["is_active"].widget.attrs["class"] = ""  # checkbox, no form-control
+
+
 class PatientSearchForm(forms.Form):
     q = forms.CharField(required=False, label="", widget=forms.TextInput(
         attrs={"class": "form-control", "placeholder": "Search by name or phone…"}))

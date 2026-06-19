@@ -10,7 +10,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 
-from .forms import PatientForm, ToothRecordForm, ToothSurfaceRecordForm, AppointmentForm, StaffCreateForm, PatientSearchForm
+from .forms import PatientForm, ToothRecordForm, ToothSurfaceRecordForm, AppointmentForm, StaffCreateForm, StaffEditForm, PatientSearchForm
 from .models import (
     Patient, ToothRecord, ToothSurfaceRecord, Appointment, AuditLog,
     UPPER_RIGHT, UPPER_LEFT, LOWER_RIGHT, LOWER_LEFT, TOOTH_NAMES, CONDITION_COLORS,
@@ -87,6 +87,7 @@ def patient_edit(request, pk):
 
 
 @login_required
+@user_passes_test(is_admin)
 def patient_delete(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
     if request.method == "POST":
@@ -440,4 +441,78 @@ def staff_create(request):
             return redirect("settings")
     else:
         form = StaffCreateForm()
-    return render(request, "records/staff_form.html", {"form": form})
+    return render(request, "records/staff_form.html", {"form": form, "action": "Add"})
+
+
+@login_required
+@user_passes_test(is_admin)
+def staff_edit(request, pk):
+    """Admin changes a staff member's full name, role, or active status."""
+    target = get_object_or_404(User, pk=pk)
+
+    # Prevent the only admin from demoting or deactivating themselves.
+    if target == request.user and request.method == "POST":
+        new_role = request.POST.get("role")
+        new_active = request.POST.get("is_active")
+        admin_count = User.objects.filter(profile__role="admin", is_active=True).count()
+        if new_role != "admin" and admin_count <= 1:
+            messages.error(request, "Cannot demote the only administrator account.")
+            return redirect("staff_edit", pk=pk)
+        if not new_active and admin_count <= 1:
+            messages.error(request, "Cannot deactivate the only administrator account.")
+            return redirect("staff_edit", pk=pk)
+
+    if request.method == "POST":
+        form = StaffEditForm(request.POST)
+        if form.is_valid():
+            old_role = target.profile.role
+            new_role = form.cleaned_data["role"]
+            target.first_name = form.cleaned_data["full_name"]
+            target.is_active = form.cleaned_data["is_active"]
+            target.is_superuser = (new_role == "admin")
+            target.is_staff = (new_role == "admin")
+            target.save()
+            target.profile.role = new_role
+            target.profile.save()
+            AuditLog.log(
+                request.user, "EDIT_STAFF",
+                f"Updated '{target.username}': role {old_role}→{new_role}, "
+                f"active={target.is_active}"
+            )
+            messages.success(request, f"'{target.username}' updated.")
+            return redirect("settings")
+    else:
+        form = StaffEditForm(initial={
+            "full_name": target.first_name,
+            "role": getattr(target, "profile", None) and target.profile.role or "dentist",
+            "is_active": target.is_active,
+        })
+
+    return render(request, "records/staff_edit_form.html", {
+        "form": form,
+        "target": target,
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def staff_toggle_active(request, pk):
+    """Quick-toggle: deactivate or reactivate a staff account from the table."""
+    target = get_object_or_404(User, pk=pk)
+
+    if target == request.user:
+        messages.error(request, "You cannot deactivate your own account.")
+        return redirect("settings")
+
+    if target.is_active:
+        admin_count = User.objects.filter(profile__role="admin", is_active=True).count()
+        if target.profile.role == "admin" and admin_count <= 1:
+            messages.error(request, "Cannot deactivate the only administrator account.")
+            return redirect("settings")
+
+    target.is_active = not target.is_active
+    target.save()
+    action = "activated" if target.is_active else "deactivated"
+    AuditLog.log(request.user, "TOGGLE_STAFF", f"Account '{target.username}' {action}")
+    messages.success(request, f"Account '{target.username}' {action}.")
+    return redirect("settings")

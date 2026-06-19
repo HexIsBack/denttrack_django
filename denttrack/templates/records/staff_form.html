@@ -1,13 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Add Dentist — DentTrack{% endblock %}
+{% block title %}Add Staff Account — DentTrack{% endblock %}
 {% block content %}
-<div class="page-header"><h1>Add New Dentist / Staff</h1></div>
-<div class="form-card">
+<div class="page-header">
+    <h1>Add Staff Account</h1>
+    <a href="{% url 'settings' %}" class="btn btn-secondary">← Back to Settings</a>
+</div>
+<div class="form-card" style="max-width:520px;">
     <form method="post">
         {% csrf_token %}
         <div class="form-group">
             <label>Full Name</label>
             {{ form.full_name }}
+            {{ form.full_name.errors }}
         </div>
         <div class="form-group">
             <label>Username</label>
@@ -17,18 +21,29 @@
         <div class="form-group">
             <label>Password</label>
             {{ form.password }}
+            {{ form.password.errors }}
         </div>
         <div class="form-group">
             <label>Confirm Password</label>
             {{ form.confirm_password }}
+            {{ form.confirm_password.errors }}
         </div>
         {{ form.non_field_errors }}
         <div class="form-group">
             <label>Role</label>
             {{ form.role }}
+            {{ form.role.errors }}
+            <small class="muted">
+                <strong>Admin</strong> — full access: manage staff, view audit log, delete records.<br>
+                <strong>Dentist</strong> — add/edit patients, use tooth chart, set appointments.<br>
+                <strong>Receptionist</strong> — add/edit patients and set appointments.
+            </small>
         </div>
-        <button type="submit" class="btn btn-success">➕ Add User</button>
-        <a href="{% url 'settings' %}" class="btn btn-secondary">Cancel</a>
+        <div style="display:flex;gap:10px;margin-top:20px;">
+            <button type="submit" class="btn btn-success">➕ Create Account</button>
+            <a href="{% url 'settings' %}" class="btn btn-secondary">Cancel</a>
+        </div>
     </form>
 </div>
 {% endblock %}
+

@@ -10,6 +10,34 @@ computer on the same Wi-Fi/Ethernet network can now open it in a browser.
 
 ---
 
+## What's new: surface-level tooth charting
+
+The tooth chart now draws real tooth shapes (different outlines for
+incisors, canines, premolars, molars, and wisdom teeth, upper vs lower)
+instead of plain colored rectangles, and each tooth is divided into 5
+clinically-laid-out surfaces you can chart independently:
+
+| Surface | Where it sits on the tooth |
+|---|---|
+| Mesial | Left third of the crown |
+| Distal | Right third of the crown |
+| Occlusal / Incisal | Center third (the biting surface) |
+| Buccal | Outer rim around the whole crown |
+| Lingual | Small inner core |
+
+Drag a procedure icon from the palette onto any surface to chart it.
+Whole-tooth procedures (crown, root canal, extraction, implant, bridge)
+apply to all 5 surfaces at once and update the tooth's overall status —
+an extracted tooth renders with a red X, matching the convention used by
+commercial dental charting software.
+
+This added one new database table (`ToothSurfaceRecord`) and one new
+migration file. If you're pulling this update into an existing install,
+just run `python manage.py migrate` as usual — your existing patient and
+tooth data is untouched.
+
+---
+
 ## 1. How this works on a LAN (read this first)
 
 One computer (e.g. the front-desk PC) runs the Django **server**. Every
@@ -105,12 +133,15 @@ denttrack/
 │   ├── urls.py
 │   └── wsgi.py
 ├── records/                   ← the actual app: models, views, forms
-│   ├── models.py              ← Patient, ToothRecord, Appointment, AuditLog, StaffProfile
+│   ├── models.py              ← Patient, ToothRecord, ToothSurfaceRecord,
+│   │                             Appointment, AuditLog, StaffProfile
 │   ├── views.py
 │   ├── forms.py
 │   ├── urls.py
 │   ├── admin.py                ← registers everything in Django's built-in /admin/
 │   ├── signals.py              ← auto-logs logins/logouts, auto-creates staff profiles
+│   ├── tooth_shapes.py          ← generates the SVG tooth outlines + 5 surface zones
+│   ├── migrations/              ← 0001_initial, 0002_toothsurfacerecord, ...
 │   └── management/commands/seed_admin.py
 ├── templates/
 │   ├── base.html               ← sidebar layout shared by every page
@@ -126,9 +157,19 @@ denttrack/
 - **Login & roles** — admin / dentist / receptionist, with every login,
   failed login, and logout automatically recorded in the audit log
   (handled by Django's built-in auth signals in `records/signals.py`).
-- **Interactive tooth chart** — a real clickable SVG diagram of all 32
-  teeth (FDI numbering), color-coded by condition. Click a tooth → a panel
-  loads on the right where you can set its condition, treatment, and notes,
+- **Interactive tooth chart** — anatomically-shaped SVG teeth (FDI numbering,
+  upper/lower arches, correct crown shape per tooth type) instead of plain
+  colored boxes. Each tooth is split into 5 clickable/droppable surfaces —
+  mesial, distal, occlusal/incisal, buccal, lingual — laid out the way a
+  real clinical chart shows them (mesial/distal as left/right thirds,
+  occlusal as the center, buccal as the outer rim, lingual as the inner
+  core). Drag a procedure (caries, filling, sealant, crown, root canal,
+  extraction, implant, bridge, fracture, watch, clear) from the palette
+  onto a tooth surface to chart it instantly — whole-tooth procedures like
+  crowns or extractions apply to all 5 surfaces at once and update the
+  tooth's overall status (e.g. extracted teeth render with a red X).
+  Click a tooth (not a specific surface) to open a panel on the right
+  showing its full surface-by-surface breakdown plus a free-text notes box,
   saved with AJAX so the chart doesn't fully reload.
 - **Patient records** — add/edit/search/delete, with medical history and
   allergy fields, and a "Full Record" view with tabs for personal info,
@@ -158,7 +199,33 @@ or briefly stop the server first to avoid copying a half-written file.
 
 ---
 
-## 8. Going beyond `runserver` (optional, for later)
+## 8. Pushing this to GitHub
+
+A `.gitignore` is included that excludes `venv/`, `__pycache__/`, and
+`dental_records.db`. That last one matters most: the database file holds
+real patient records once you start using the app, so it should never be
+committed to a public (or even private) repo. Each clinic's `dental_records.db`
+stays local to their server PC.
+
+If you're publishing this for the first time:
+
+```bash
+git init
+git add .
+git commit -m "Initial commit: DentTrack Django edition"
+git branch -M main
+git remote add origin https://github.com/<your-username>/<repo-name>.git
+git push -u origin main
+```
+
+Anyone cloning the repo afterward follows section 2 above (`pip install -r
+requirements.txt`, `python manage.py migrate`, `python manage.py seed_admin`)
+to get a fresh, empty database and the default admin login — none of your
+clinic's actual patient data is part of the repo.
+
+---
+
+## 9. Going beyond `runserver` (optional, for later)
 
 `python manage.py runserver` is meant for development. It works fine for a
 small clinic's daily use, but if you want something more robust (auto-restart
